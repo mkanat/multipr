@@ -4,7 +4,8 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
+patch = "0.7"
 
 [[bin]]
-name = "multipr"
-path = "src/main.rs"
+name = "splitpr"
+path = "src/splitpr.rs"

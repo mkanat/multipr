@@ -34,8 +34,6 @@ fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str>  {
     // TODO: We will need to deal with outputting CRLF correctly, in the future.
     // Although to be fair, I'm not sure that actually matters for most patch
     // tools. Can use diff.split_inclusive('\n').
-
-    // TOOD: Need to account for git putting a/ and b/ in front of file names.
     for line in diff.lines() {
         /*
         In many patch formats, such as git, this is the indicator that

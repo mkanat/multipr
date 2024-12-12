@@ -57,9 +57,9 @@ fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str>  {
             old_file_name.clear();
             new_file_name.clear();
         } else if line.starts_with("--- ") {
-            old_file_name = line[4..].to_owned();
+            old_file_name = fix_filename(line[4..].to_owned());
         } else if line.starts_with("+++ ") {
-            new_file_name = line[4..].to_owned();
+            new_file_name = fix_filename(line[4..].to_owned());
         }
 
         current_file_lines.push(line);
@@ -80,6 +80,13 @@ fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str>  {
 
 }
 
+fn fix_filename(filename: String) -> String {
+    if filename.starts_with("a/") || filename.starts_with("b/") {
+        return filename[2..].to_owned();
+    }
+    return filename;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,6 +97,11 @@ mod tests {
         let diff = fs::read_to_string("tests/fixtures/git-multi-file.diff").unwrap();
         let patch_files = split_diff(diff).unwrap();
         assert_eq!(patch_files.len(), 3, "{:#?} does not have length 3", patch_files);
+        let first = &patch_files[0];
+        assert_eq!(first.old, "Cargo.toml");
+        assert_eq!(first.new, "Cargo.toml");
+        assert_eq!(first.contents.len(), 279, "Contents: {}", patch_files[0].contents);
+        assert!(first.contents.contains("[[bin]]\n"));
     }
 
 }

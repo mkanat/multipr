@@ -1,0 +1,41 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 3c23270..45273fb 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -4,7 +4,8 @@ version = "0.0.1"
+ edition = "2021"
+ 
+ [dependencies]
++patch = "0.7"
+ 
+ [[bin]]
+-name = "multipr"
+-path = "src/main.rs"
++name = "splitpr"
++path = "src/splitpr.rs"
+diff --git a/src/main.rs b/src/main.rs
+deleted file mode 100644
+index 6686bd0..0000000
+--- a/src/main.rs
++++ /dev/null
+@@ -1,3 +0,0 @@
+-fn main() {
+-    println!("Hello, world!")
+-}
+diff --git a/src/splitpr.rs b/src/splitpr.rs
+new file mode 100644
+index 0000000..cf68a4c
+--- /dev/null
++++ b/src/splitpr.rs
+@@ -0,0 +1,11 @@
++use std::error::Error;
++use std::io;
++
++use patch::Patch;
++
++fn main() -> Result<(), Box<dyn Error>> {
++    let input = io::read_to_string(io::stdin())?;
++    let patch = Patch::from_multiple(&input).map_err(|e| e.to_string())?;
++    println!("{:#?}", patch);
++    Ok(())
++}

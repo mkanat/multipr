@@ -79,3 +79,17 @@ fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str>  {
     Ok(patch_files)
 
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn split_diff_git() {
+        let diff = fs::read_to_string("tests/fixtures/git-multi-file.diff").unwrap();
+        let patch_files = split_diff(diff).unwrap();
+        assert_eq!(patch_files.len(), 3, "{:#?} does not have length 3", patch_files);
+    }
+
+}

@@ -78,11 +78,18 @@ fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str>  {
 
 }
 
-fn fix_filename(filename: String) -> String {
+fn fix_filename(mut filename: String) -> String {
+    // Prefixes used by git diff.
     if filename.starts_with("a/") || filename.starts_with("b/") {
-        return filename[2..].to_owned();
+        filename = filename[2..].to_owned();
     }
-    return filename;
+    // The normal "diff" command adds dates after file paths, delimited
+    // with a tab (which is not a valid path character on any OS that I
+    // know of).
+    if let Some(tab_pos) = filename.find('\t') {
+        filename = filename[..tab_pos].to_owned();
+    }
+    filename
 }
 
 #[cfg(test)]
@@ -101,6 +108,22 @@ mod tests {
         check_patch_file(&patch_files[1], "src/main.rs", "/dev/null", 181, "-}");
         check_patch_file(&patch_files[2], "/dev/null", "src/splitpr.rs", 416, "+    Ok(())\n");
     }
+
+    // A patch generated with "diff -Nru"
+    #[gtest]
+    fn split_diff_diff() {
+        let diff = fs::read_to_string("tests/fixtures/diff-Nru-multi-file.diff").unwrap();
+        let patch_files = split_diff(diff).unwrap();
+        assert_that!(patch_files, len(eq(3)));
+        check_patch_file(&patch_files[0], "multipr-2/Cargo.toml", "multipr-3/Cargo.toml", 332, "[[bin]]\n");
+        // TODO: This does not preserve the newline on the last line, currently.
+        //
+        // Note that this is an important difference from git diff: there is no /dev/null when you're
+        // adding or removing a file. Instead, the added and removed file name are the same but with
+        // different base directories, as though there was an empty file in the new or old location.
+        check_patch_file(&patch_files[1], "multipr-2/src/main.rs", "multipr-3/src/main.rs", 240, "-}");
+        check_patch_file(&patch_files[2], "multipr-2/src/splitpr.rs", "multipr-3/src/splitpr.rs", 482, "+    Ok(())\n");
+   }
 
     fn check_patch_file(item: &PatchFile, old: &str, new: &str, expected_length: usize, check_contents: &str) {
         expect_that!(item.old, eq(old));

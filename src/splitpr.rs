@@ -95,11 +95,16 @@ mod tests {
         let diff = fs::read_to_string("tests/fixtures/git-multi-file.diff").unwrap();
         let patch_files = split_diff(diff).unwrap();
         assert_eq!(patch_files.len(), 3, "{:#?} does not have length 3", patch_files);
-        let first = &patch_files[0];
-        assert_eq!(first.old, "Cargo.toml");
-        assert_eq!(first.new, "Cargo.toml");
-        assert_eq!(first.contents.len(), 279, "Contents: {}", patch_files[0].contents);
-        assert!(first.contents.contains("[[bin]]\n"));
+        check_patch_file(&patch_files[0], "Cargo.toml", "Cargo.toml", 279, "[[bin]]\n");
+    }
+
+    fn check_patch_file(item: &PatchFile, old: &str, new: &str, expected_length: usize, check_contents: &str) {
+        assert_eq!(item.old, "Cargo.toml");
+        assert_eq!(item.new, "Cargo.toml");
+        let contents = &item.contents;
+        assert_eq!(contents.len(), expected_length, "Content length {} was not the expected {}\nContents: {}",
+                   contents.len(), expected_length, contents);
+        assert!(item.contents.contains(check_contents));
     }
 
 }

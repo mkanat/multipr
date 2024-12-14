@@ -3,7 +3,8 @@ name = "multipr"
 version = "0.0.1"
 edition = "2021"
 
-[dependencies]
+[dev-dependencies]
+googletest = "0.13"
 
 [[bin]]
 name = "splitpr"

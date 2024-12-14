@@ -88,23 +88,25 @@ fn fix_filename(filename: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use googletest::prelude::*;
     use std::fs;
 
-    #[test]
+    #[gtest]
     fn split_diff_git() {
         let diff = fs::read_to_string("tests/fixtures/git-multi-file.diff").unwrap();
         let patch_files = split_diff(diff).unwrap();
-        assert_eq!(patch_files.len(), 3, "{:#?} does not have length 3", patch_files);
+        assert_that!(patch_files, len(eq(3)));
         check_patch_file(&patch_files[0], "Cargo.toml", "Cargo.toml", 279, "[[bin]]\n");
+        // TODO: This does not preserve the newline on the last line, currently.
+        check_patch_file(&patch_files[1], "src/main.rs", "/dev/null", 181, "-}");
+        check_patch_file(&patch_files[2], "/dev/null", "src/splitpr.rs", 416, "+    Ok(())\n");
     }
 
     fn check_patch_file(item: &PatchFile, old: &str, new: &str, expected_length: usize, check_contents: &str) {
-        assert_eq!(item.old, "Cargo.toml");
-        assert_eq!(item.new, "Cargo.toml");
-        let contents = &item.contents;
-        assert_eq!(contents.len(), expected_length, "Content length {} was not the expected {}\nContents: {}",
-                   contents.len(), expected_length, contents);
-        assert!(item.contents.contains(check_contents));
+        expect_that!(item.old, eq(old));
+        expect_that!(item.new, eq(new));
+        expect_that!(item.contents, contains_substring(check_contents));
+        expect_that!(item.contents, char_count(eq(expected_length)));
     }
 
 }

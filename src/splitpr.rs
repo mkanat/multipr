@@ -1,10 +1,22 @@
 use std::error::Error;
+use std::fs;
 use std::io;
+use std::path::Path;
+use std::path::PathBuf;
+
+/*
+Define a set of characters we consider unsafe in filenames.
+On Windows, for instance, these characters are not allowed in filenames:
+< > : " / \ | ? *
+We'll also replace the directory separator `/` commonly used on Unix,
+plus we replace . because we are adding our own extension.
+*/
+const FILENAME_FORBIDDEN_CHARS : [char; 10] = ['/', '<', '>', ':', '"', '\\', '|', '?', '*', '.'];
 
 fn main() -> Result<(), Box<dyn Error>> {
     let input = io::read_to_string(io::stdin())?;
-    let patch_files = split_diff(input);
-    println!("{:#?}", patch_files);
+    let patch_files = split_diff(input)?;
+    write_out_new_diffs(patch_files)?;
     Ok(())
 }
 
@@ -92,11 +104,41 @@ fn fix_filename(mut filename: String) -> String {
     filename
 }
 
+fn write_out_new_diffs(patch_files: Vec<PatchFile>) -> Result<(), io::Error> {
+    for pf in patch_files {
+        let new_path = generate_filename(&pf)?;
+        fs::write(new_path, pf.contents)?;
+    }
+    Ok(())
+}
+
+fn generate_filename(pf: &PatchFile) -> Result<PathBuf, io::Error> {
+    // By default, we want to use the new filename. However, in some patch
+    // formats it's "/dev/null" for deleted files, and we don't just want
+    // to write out a bunch of files named _dev_null.
+    let mut diff_filename = &pf.new;
+    if diff_filename == "/dev/null" {
+        diff_filename = &pf.old;
+    }
+    let base_filename : String = diff_filename.chars()
+       .map(|c| if FILENAME_FORBIDDEN_CHARS.contains(&c) { '_' } else { c })
+       .collect();
+    let mut with_ext = Path::new(&base_filename).with_extension("diff");
+    let mut counter = 0;
+    // TODO: Add retry limit?
+    loop {
+        if !with_ext.try_exists()? {
+            return Ok(with_ext.to_path_buf());
+        }
+        counter += 1;
+        with_ext.set_file_name(&format!("{}-{}.diff", base_filename, counter));
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use googletest::prelude::*;
-    use std::fs;
 
     #[gtest]
     fn split_diff_git() {

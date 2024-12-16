@@ -65,9 +65,9 @@ fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str> {
             old_file_name.clear();
             new_file_name.clear();
         } else if line.starts_with("--- ") {
-            old_file_name = fix_filename(line[4..].to_owned());
+            old_file_name = fix_filename_in_diff(line[4..].to_owned());
         } else if line.starts_with("+++ ") {
-            new_file_name = fix_filename(line[4..].to_owned());
+            new_file_name = fix_filename_in_diff(line[4..].to_owned());
         }
 
         current_file_lines.push(line);
@@ -86,7 +86,7 @@ fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str> {
     Ok(patch_files)
 }
 
-fn fix_filename(mut filename: String) -> String {
+fn fix_filename_in_diff(mut filename: String) -> String {
     // Prefixes used by git diff.
     if filename.starts_with("a/") || filename.starts_with("b/") {
         filename = filename[2..].to_owned();
@@ -103,6 +103,7 @@ fn fix_filename(mut filename: String) -> String {
 fn write_out_new_diffs(patch_files: Vec<PatchFile>) -> Result<(), io::Error> {
     for pf in patch_files {
         let new_path = generate_filename(&pf)?;
+        // Theoretically there is a TOCTOU issue here.
         fs::write(new_path, pf.contents)?;
     }
     Ok(())
@@ -142,6 +143,62 @@ fn generate_filename(pf: &PatchFile) -> Result<PathBuf, io::Error> {
 mod tests {
     use super::*;
     use googletest::prelude::*;
+    use tempfile;
+
+    #[gtest]
+    fn generate_filename_simple_filename() {
+        let pf = PatchFile {
+            old: "foo".to_string(),
+            new: "bar".to_string(),
+            contents: "nothing".to_string(),
+        };
+        expect_that!(generate_filename(&pf), ok(eq(Path::new("bar.diff"))));
+    }
+
+    #[gtest]
+    fn generate_filename_dev_null() {
+        let pf = PatchFile {
+            old: "foo".to_string(),
+            new: "/dev/null".to_string(),
+            contents: "nothing".to_string(),
+        };
+        expect_that!(generate_filename(&pf), ok(eq(Path::new("foo.diff"))));
+    }
+
+    #[gtest]
+    fn generate_filename_file_with_extension() {
+        let pf = PatchFile {
+            old: "foo.diff".to_string(),
+            new: "bar.diff".to_string(),
+            contents: "nothing".to_string(),
+        };
+        expect_that!(generate_filename(&pf), ok(eq(Path::new("bar_diff.diff"))));
+    }
+
+    #[gtest]
+    fn generate_filename_file_exists() {
+        // We have to use Builder or tempfile will add a . as a prefix.
+        let tmp = tempfile::Builder::new()
+            .prefix("filename_exists-")
+            .suffix(".diff")
+            .tempfile_in("./")
+            .unwrap();
+        let without_ext = tmp
+            .path()
+            .with_extension("")
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        let pf = PatchFile {
+            old: "foo.diff".to_string(),
+            new: without_ext.clone(),
+            contents: "nothing".to_string(),
+        };
+        let expect_name = format!("{}-1.diff", without_ext);
+        expect_that!(generate_filename(&pf), ok(eq(Path::new(&expect_name))));
+    }
 
     #[gtest]
     fn split_diff_git() {

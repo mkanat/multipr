@@ -5,6 +5,7 @@ edition = "2021"
 
 [dev-dependencies]
 googletest = "0.13"
+tempfile = "3"
 
 [[bin]]
 name = "splitpr"

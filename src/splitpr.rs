@@ -11,7 +11,7 @@ On Windows, for instance, these characters are not allowed in filenames:
 We'll also replace the directory separator `/` commonly used on Unix,
 plus we replace . because we are adding our own extension.
 */
-const FILENAME_FORBIDDEN_CHARS : [char; 10] = ['/', '<', '>', ':', '"', '\\', '|', '?', '*', '.'];
+const FILENAME_FORBIDDEN_CHARS: [char; 10] = ['/', '<', '>', ':', '"', '\\', '|', '?', '*', '.'];
 
 fn main() -> Result<(), Box<dyn Error>> {
     let input = io::read_to_string(io::stdin())?;
@@ -27,7 +27,6 @@ struct PatchFile {
     contents: String,
 }
 
-
 /*
 Originally I was using the patch crate to parse patches, but it does both
 less and more than I need. I don't need to understand hunks (which patch
@@ -37,7 +36,7 @@ patch (which patch does not).
 This does not borrow the input string, because in all callers we never
 need to re-use the string again.
 */
-fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str>  {
+fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str> {
     let mut patch_files = Vec::new();
     let mut current_file_lines = Vec::new();
     let mut old_file_name = String::new();
@@ -61,7 +60,6 @@ fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str>  {
                 old: old_file_name.clone(),
                 new: new_file_name.clone(),
                 contents: current_file_lines.join("\n"),
-
             });
             current_file_lines.clear();
             old_file_name.clear();
@@ -83,11 +81,9 @@ fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str>  {
         old: old_file_name.clone(),
         new: new_file_name.clone(),
         contents: current_file_lines.join("\n"),
-
     });
 
     Ok(patch_files)
-
 }
 
 fn fix_filename(mut filename: String) -> String {
@@ -120,9 +116,16 @@ fn generate_filename(pf: &PatchFile) -> Result<PathBuf, io::Error> {
     if diff_filename == "/dev/null" {
         diff_filename = &pf.old;
     }
-    let base_filename : String = diff_filename.chars()
-       .map(|c| if FILENAME_FORBIDDEN_CHARS.contains(&c) { '_' } else { c })
-       .collect();
+    let base_filename: String = diff_filename
+        .chars()
+        .map(|c| {
+            if FILENAME_FORBIDDEN_CHARS.contains(&c) {
+                '_'
+            } else {
+                c
+            }
+        })
+        .collect();
     let mut with_ext = Path::new(&base_filename).with_extension("diff");
     let mut counter = 0;
     // TODO: Add retry limit?
@@ -132,7 +135,7 @@ fn generate_filename(pf: &PatchFile) -> Result<PathBuf, io::Error> {
         }
         counter += 1;
         with_ext.set_file_name(&format!("{}-{}.diff", base_filename, counter));
-    };
+    }
 }
 
 #[cfg(test)]
@@ -145,10 +148,22 @@ mod tests {
         let diff = fs::read_to_string("tests/fixtures/git-multi-file.diff").unwrap();
         let patch_files = split_diff(diff).unwrap();
         assert_that!(patch_files, len(eq(3)));
-        check_patch_file(&patch_files[0], "Cargo.toml", "Cargo.toml", 279, "[[bin]]\n");
+        check_patch_file(
+            &patch_files[0],
+            "Cargo.toml",
+            "Cargo.toml",
+            279,
+            "[[bin]]\n",
+        );
         // TODO: This does not preserve the newline on the last line, currently.
         check_patch_file(&patch_files[1], "src/main.rs", "/dev/null", 181, "-}");
-        check_patch_file(&patch_files[2], "/dev/null", "src/splitpr.rs", 416, "+    Ok(())\n");
+        check_patch_file(
+            &patch_files[2],
+            "/dev/null",
+            "src/splitpr.rs",
+            416,
+            "+    Ok(())\n",
+        );
     }
 
     // A patch generated with "diff -Nru"
@@ -157,21 +172,44 @@ mod tests {
         let diff = fs::read_to_string("tests/fixtures/diff-Nru-multi-file.diff").unwrap();
         let patch_files = split_diff(diff).unwrap();
         assert_that!(patch_files, len(eq(3)));
-        check_patch_file(&patch_files[0], "multipr-2/Cargo.toml", "multipr-3/Cargo.toml", 332, "[[bin]]\n");
+        check_patch_file(
+            &patch_files[0],
+            "multipr-2/Cargo.toml",
+            "multipr-3/Cargo.toml",
+            332,
+            "[[bin]]\n",
+        );
         // TODO: This does not preserve the newline on the last line, currently.
         //
         // Note that this is an important difference from git diff: there is no /dev/null when you're
         // adding or removing a file. Instead, the added and removed file name are the same but with
         // different base directories, as though there was an empty file in the new or old location.
-        check_patch_file(&patch_files[1], "multipr-2/src/main.rs", "multipr-3/src/main.rs", 240, "-}");
-        check_patch_file(&patch_files[2], "multipr-2/src/splitpr.rs", "multipr-3/src/splitpr.rs", 482, "+    Ok(())\n");
-   }
+        check_patch_file(
+            &patch_files[1],
+            "multipr-2/src/main.rs",
+            "multipr-3/src/main.rs",
+            240,
+            "-}",
+        );
+        check_patch_file(
+            &patch_files[2],
+            "multipr-2/src/splitpr.rs",
+            "multipr-3/src/splitpr.rs",
+            482,
+            "+    Ok(())\n",
+        );
+    }
 
-    fn check_patch_file(item: &PatchFile, old: &str, new: &str, expected_length: usize, check_contents: &str) {
+    fn check_patch_file(
+        item: &PatchFile,
+        old: &str,
+        new: &str,
+        expected_length: usize,
+        check_contents: &str,
+    ) {
         expect_that!(item.old, eq(old));
         expect_that!(item.new, eq(new));
         expect_that!(item.contents, contains_substring(check_contents));
         expect_that!(item.contents, char_count(eq(expected_length)));
     }
-
 }

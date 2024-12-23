@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fs;
 use std::io;
+use std::io::Write; // For buf in logger.
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -19,7 +20,7 @@ const FILENAME_FORBIDDEN_CHARS: [char; 10] = ['/', '<', '>', ':', '"', '\\', '|'
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::Builder::new()
         .filter_level(LevelFilter::Info)
-        .format_target(false)
+        .format(|buf, record| writeln!(buf, "{}", record.args()))
         .parse_default_env()
         .init();
 

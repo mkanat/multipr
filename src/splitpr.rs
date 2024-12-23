@@ -4,6 +4,9 @@ use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 
+use env_logger;
+use log::{info, LevelFilter};
+
 /*
 Define a set of characters we consider unsafe in filenames.
 On Windows, for instance, these characters are not allowed in filenames:
@@ -14,6 +17,13 @@ plus we replace . because we are adding our own extension.
 const FILENAME_FORBIDDEN_CHARS: [char; 10] = ['/', '<', '>', ':', '"', '\\', '|', '?', '*', '.'];
 
 fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::Builder::new()
+        .filter_level(LevelFilter::Info)
+        .format_target(false)
+        .parse_default_env()
+        .init();
+
+    info!("Detected input on stdin, reading a diff from stdin.");
     let input = io::read_to_string(io::stdin())?;
     let patch_files = split_diff(input)?;
     write_out_new_diffs(patch_files)?;
@@ -103,6 +113,7 @@ fn fix_filename_in_diff(mut filename: String) -> String {
 fn write_out_new_diffs(patch_files: Vec<PatchFile>) -> Result<(), io::Error> {
     for pf in patch_files {
         let new_path = generate_filename(&pf)?;
+        info!("Writing: {}", new_path.to_string_lossy());
         // Theoretically there is a TOCTOU issue here.
         fs::write(new_path, pf.contents)?;
     }

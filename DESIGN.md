@@ -1,4 +1,12 @@
-This file contains the basic plans for the system.
+This file contains the basic plans for the system, as well as some principles we follow.
+
+== Principles ==
+
+* Never modify any existing file (including the history of any repository) unless the user has said yes at a prompt or provided a flag that indicates that intention.
+* Don't be surprising. By default, behave the same as other tools the developer uses for the same task we are doing. For example, if we are doing a git diff, by default behave exactly like `git diff`.
+* Try to constrain the UI surface of any individual tool. One common problem with developer CLI tools is that they explode with flags that almost nobody ever needs. Before you add a flag or a UI element, think, "How often does the user really need this? If it's uncommon, could they just use some external tool to do it instead?" For example, we don't provide the option to use patience diff when we are diffing a git repo, because if you _really_ needed to, you could just do `git diff --patience` yourself, and we don't think it will be needed that often. Provide flags and UI elements for the choices and actions people frequently _need_ to make.
+
+== Design ==
 
 Multipr consists of a few different components:
 

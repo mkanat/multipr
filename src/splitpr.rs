@@ -1,12 +1,21 @@
-use std::error::Error;
 use std::fs;
 use std::io;
 use std::io::Write; // For buf in logger.
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use anyhow::bail;
+use atty;
 use env_logger;
-use log::{info, LevelFilter};
+use git2::{DiffFormat, DiffOptions, Repository};
+use log::{debug, info, LevelFilter};
+
+const DEFAULT_REMOTE_HEAD: &'static str = "refs/remotes/origin/HEAD";
+// When printing a diff, we need to prefix certain lines with an extra
+// character, if that line indicates it has a certain type of "origin"
+// (see DiffLine in git2). These origins are exactly what diff_print_to_buf
+// checks against in libgit2, and that function claims it prints identically
+// to `git diff`.
+const GIT_DIFF_ORIGINS_TO_PRINT: [char; 3] = ['+', '-', ' '];
 
 /*
 Define a set of characters we consider unsafe in filenames.
@@ -17,18 +26,85 @@ plus we replace . because we are adding our own extension.
 */
 const FILENAME_FORBIDDEN_CHARS: [char; 10] = ['/', '<', '>', ':', '"', '\\', '|', '?', '*', '.'];
 
-fn main() -> Result<(), Box<dyn Error>> {
+// TODO: Use miette to colorize error output?
+fn main() -> anyhow::Result<()> {
     env_logger::Builder::new()
         .filter_level(LevelFilter::Info)
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .parse_default_env()
         .init();
 
-    info!("Detected input on stdin, reading a diff from stdin.");
-    let input = io::read_to_string(io::stdin())?;
+    let mut input = String::new();
+    if atty::isnt(atty::Stream::Stdin) {
+        info!("Detected input on stdin, reading a diff from stdin.");
+        input = io::read_to_string(io::stdin())?;
+    } else {
+        match Repository::discover(Path::new(".")) {
+            Ok(repo) => {
+                info!("Diffing the local git repository against remote head.");
+                input = get_diff_from_repo(repo)?;
+            }
+            Err(e) => {
+                debug!("No git repo found: {}", e)
+            }
+        };
+    }
+    if input.is_empty() {
+        bail!("No input found on stdin, and local directory is not a git repo that differs from remote head.");
+    }
     let patch_files = split_diff(input)?;
     write_out_new_diffs(patch_files)?;
     Ok(())
+}
+
+fn get_diff_from_repo(repo: Repository) -> Result<String, git2::Error> {
+    /*
+    We want to find the "merge base commit." Basically, we want to know
+    the differences between our repo and what origin would have looked
+    like the last time we merged (so that we don't force the user to)
+    fetch from head, although we should probably warn them if they
+    haven't merged in head (since that will mean we then have to merge)
+    on every individual repo we create, later. But maybe somebody is using
+    this tool for some other purpose, so we allow this.
+    */
+
+    let local_head = repo.head()?.peel_to_commit()?;
+    // TODO: Allow user to specify a different remote.
+    let remote_head = repo
+        .find_reference(&DEFAULT_REMOTE_HEAD)?
+        .peel_to_commit()?;
+    // TODO: Wrap this error to give it a better error message.
+    let merge_base_oid = repo.merge_base(local_head.id(), remote_head.id())?;
+    let merge_base_commit = repo.find_commit(merge_base_oid)?;
+    let local_head_tree = local_head.tree()?;
+    let merge_base_tree = merge_base_commit.tree()?;
+
+    // TODO: Provide an option to choose between diffing against the workdir and
+    // diffing against committed head.
+    //
+    // TODO: Need to support binary files that have changed.
+    //
+    // We default to using the committed head because we assume that the user's
+    // intent is to create diffs against what would be pushed as a PR if they
+    // pushed right now.
+    let diff = repo.diff_tree_to_tree(
+        Some(&merge_base_tree),
+        Some(&local_head_tree),
+        Some(&mut DiffOptions::new()),
+    )?;
+
+    let mut diff_text = String::new();
+    diff.print(DiffFormat::Patch, |_delta, _hunk, line| {
+        // This algorithm is similar to the one inside libgit2 for printing
+        // out exactly like git diff does. (Rust git2 does not expose
+        // `diff_print_to_buf` as of Jan 1, 2025.)
+        if GIT_DIFF_ORIGINS_TO_PRINT.contains(&line.origin()) {
+            diff_text.push(line.origin());
+        }
+        diff_text.push_str(&String::from_utf8_lossy(line.content()));
+        true
+    })?;
+    Ok(diff_text)
 }
 
 #[derive(Debug)]
@@ -47,7 +123,7 @@ patch (which patch does not).
 This does not borrow the input string, because in all callers we never
 need to re-use the string again.
 */
-fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str> {
+fn split_diff(diff: String) -> anyhow::Result<Vec<PatchFile>> {
     let mut patch_files = Vec::new();
     let mut current_file_lines = Vec::new();
     let mut old_file_name = String::new();
@@ -85,7 +161,7 @@ fn split_diff(diff: String) -> Result<Vec<PatchFile>, &'static str> {
     }
 
     if old_file_name.is_empty() || new_file_name.is_empty() {
-        return Err("Did not find any lines starting with --- or +++ in the diff");
+        bail!("Did not find any lines starting with --- or +++ in the diff");
     }
 
     patch_files.push(PatchFile {

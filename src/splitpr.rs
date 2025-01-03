@@ -231,7 +231,16 @@ fn generate_filename(pf: &PatchFile) -> Result<PathBuf, io::Error> {
 mod tests {
     use super::*;
     use googletest::prelude::*;
-    use tempfile;
+    use tar::Archive;
+    use tempfile::{self, TempDir};
+
+    const TEST_REPO: &'static str = "tests/fixtures/test-repo.tar";
+    const TEST_REPO_NAME: &'static str = "test-repo";
+    const CLONE_REPO_NAME: &'static str = "clone-repo";
+    // This is the commit where we added all the files, but didn't modify them yet.
+    const TEST_REPO_BASE_COMMIT: &'static str = "802a28339894a17bf824fb515415df565dd8ab5f";
+
+    // generate_filename
 
     #[gtest]
     fn generate_filename_simple_filename() {
@@ -287,6 +296,53 @@ mod tests {
         let expect_name = format!("{}-1.diff", without_ext);
         expect_that!(generate_filename(&pf), ok(eq(Path::new(&expect_name))));
     }
+
+    // Git tests that use actual repos. Note: don't panic in any of these
+    // tests, if possible. It prevents the tempdir from being cleaned up.
+
+    fn test_tar_to_repo_and_clone() -> anyhow::Result<(TempDir, Repository, Repository)> {
+        let tempdir = TempDir::new()?;
+        let tar_file = fs::File::open(TEST_REPO)?;
+        let mut tar = Archive::new(tar_file);
+        tar.unpack(tempdir.path())?;
+        let repo_path = tempdir.path().join(TEST_REPO_NAME);
+        let origin = Repository::open(&repo_path)?;
+        let clone = Repository::clone(
+            repo_path.to_str().unwrap(),
+            tempdir.path().join(CLONE_REPO_NAME),
+        )?;
+        debug!(
+            "Origin Repo: {:#?} Clone Repo: {:#?}",
+            origin.path(),
+            clone.path()
+        );
+        // We return tempdir so it doesn't go out of scope and get deleted.
+        return Ok((tempdir, origin, clone));
+    }
+
+    fn reset_repo_to_commit(
+        repo: &Repository,
+        oid_str: &str,
+    ) -> std::result::Result<(), git2::Error> {
+        let oid = git2::Oid::from_str(oid_str)?;
+        let commit = repo.find_object(oid, None)?;
+        repo.reset(&commit, git2::ResetType::Hard, None)
+    }
+
+    #[gtest]
+    fn get_diff_from_repo_multi_file() -> Result<()> {
+        let (_tmp, origin, clone) = test_tar_to_repo_and_clone().into_test_result()?;
+        reset_repo_to_commit(&origin, TEST_REPO_BASE_COMMIT)?;
+        clone
+            .find_remote("origin")?
+            .fetch::<&str>(&[], None, None)?;
+        let diff_text = get_diff_from_repo(clone)?;
+        let expected = fs::read_to_string("tests/fixtures/get_diff_from_repo_multi_file.diff")?;
+        expect_eq!(diff_text, expected);
+        Ok(())
+    }
+
+    // split_diff
 
     #[gtest]
     fn split_diff_git() {

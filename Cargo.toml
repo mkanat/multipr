@@ -12,6 +12,7 @@ log = "0.4"
 
 [dev-dependencies]
 googletest = "0.13"
+tar = "0.4"
 tempfile = "3"
 
 [[bin]]

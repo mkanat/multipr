@@ -1,0 +1,38 @@
+diff --git a/dir1/file-in-dir.txt b/dir1/file-in-dir.txt
+index a6a13b4..44a6f15 100644
+--- a/dir1/file-in-dir.txt
++++ b/dir1/file-in-dir.txt
+@@ -1 +1 @@
+-One line of text.
++Modified line of text.
+diff --git a/dir1/image.png b/dir1/image.png
+index 82d5c7f..61137fb 100644
+Binary files a/dir1/image.png and b/dir1/image.png differ
+diff --git a/dir1/second-file.txt b/dir1/second-file.txt
+index 6da4d3e..bbf6cb0 100644
+--- a/dir1/second-file.txt
++++ b/dir1/second-file.txt
+@@ -1,3 +1,3 @@
+-First line
+-Second line
++First line gets changed
++Second line is modified
+ Third line
+diff --git a/top-level-file.txt b/top-level-file.txt
+index c3d6f8e..fa5af52 100644
+--- a/top-level-file.txt
++++ b/top-level-file.txt
+@@ -1,5 +1,5 @@
+ first line
+-second line
++second line changed
+ 
+ 
+ 
+@@ -28,4 +28,5 @@ third line far down
+ 
+ 
+ 
+-fourth line very far down
++fourth line very far down also changed
++

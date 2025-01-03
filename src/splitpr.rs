@@ -9,7 +9,7 @@ use env_logger;
 use git2::{DiffFormat, DiffOptions, Repository};
 use log::{debug, info, LevelFilter};
 
-const DEFAULT_REMOTE_HEAD: &'static str = "refs/remotes/origin/HEAD";
+const DEFAULT_REMOTE_HEAD: &str = "refs/remotes/origin/HEAD";
 // When printing a diff, we need to prefix certain lines with an extra
 // character, if that line indicates it has a certain type of "origin"
 // (see DiffLine in git2). These origins are exactly what diff_print_to_buf
@@ -234,11 +234,11 @@ mod tests {
     use tar::Archive;
     use tempfile::{self, TempDir};
 
-    const TEST_REPO: &'static str = "tests/fixtures/test-repo.tar";
-    const TEST_REPO_NAME: &'static str = "test-repo";
-    const CLONE_REPO_NAME: &'static str = "clone-repo";
+    const TEST_REPO: &str = "tests/fixtures/test-repo.tar";
+    const TEST_REPO_NAME: &str = "test-repo";
+    const CLONE_REPO_NAME: &str = "clone-repo";
     // This is the commit where we added all the files, but didn't modify them yet.
-    const TEST_REPO_BASE_COMMIT: &'static str = "802a28339894a17bf824fb515415df565dd8ab5f";
+    const TEST_REPO_BASE_COMMIT: &str = "802a28339894a17bf824fb515415df565dd8ab5f";
 
     // generate_filename
 

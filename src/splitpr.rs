@@ -75,7 +75,6 @@ fn get_diff_from_repo(repo: &Repository) -> anyhow::Result<String> {
         .find_reference(&DEFAULT_REMOTE_HEAD)
         .context("could not find remote origin for the repo")?
         .peel_to_commit()?;
-    // TODO: Wrap this error to give it a better error message.
     let merge_base_oid = repo.merge_base(local_head.id(), remote_head.id())?;
     let merge_base_commit = repo.find_commit(merge_base_oid)?;
     let local_head_tree = local_head.tree()?;

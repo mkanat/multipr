@@ -3,7 +3,7 @@ use std::io;
 use std::io::Write; // For buf in logger.
 use std::path::{Path, PathBuf};
 
-use anyhow::bail;
+use anyhow::{bail, Context}; // Have to import Context trait for with_context.
 use atty;
 use env_logger;
 use git2::{DiffFormat, DiffOptions, Repository};
@@ -42,7 +42,8 @@ fn main() -> anyhow::Result<()> {
         match Repository::discover(Path::new(".")) {
             Ok(repo) => {
                 info!("Diffing the local git repository against remote head.");
-                input = get_diff_from_repo(repo)?;
+                input = get_diff_from_repo(&repo)
+                    .with_context(|| format!("failed to do a git diff in {:#?}", repo.path()))?;
             }
             Err(e) => {
                 debug!("No git repo found: {}", e)
@@ -50,14 +51,14 @@ fn main() -> anyhow::Result<()> {
         };
     }
     if input.is_empty() {
-        bail!("No input found on stdin, and local directory is not a git repo that differs from remote head.");
+        bail!("No input found on stdin, and local directory is not a git repo where the commits differ from remote head.");
     }
     let patch_files = split_diff(input)?;
     write_out_new_diffs(patch_files)?;
     Ok(())
 }
 
-fn get_diff_from_repo(repo: Repository) -> Result<String, git2::Error> {
+fn get_diff_from_repo(repo: &Repository) -> anyhow::Result<String> {
     /*
     We want to find the "merge base commit." Basically, we want to know
     the differences between our repo and what origin would have looked
@@ -71,7 +72,8 @@ fn get_diff_from_repo(repo: Repository) -> Result<String, git2::Error> {
     let local_head = repo.head()?.peel_to_commit()?;
     // TODO: Allow user to specify a different remote.
     let remote_head = repo
-        .find_reference(&DEFAULT_REMOTE_HEAD)?
+        .find_reference(&DEFAULT_REMOTE_HEAD)
+        .context("could not find remote origin for the repo")?
         .peel_to_commit()?;
     // TODO: Wrap this error to give it a better error message.
     let merge_base_oid = repo.merge_base(local_head.id(), remote_head.id())?;
@@ -336,9 +338,27 @@ mod tests {
         clone
             .find_remote("origin")?
             .fetch::<&str>(&[], None, None)?;
-        let diff_text = get_diff_from_repo(clone)?;
+        let diff_text = get_diff_from_repo(&clone).into_test_result()?;
         let expected = fs::read_to_string("tests/fixtures/get_diff_from_repo_multi_file.diff")?;
         expect_eq!(diff_text, expected);
+        Ok(())
+    }
+
+    #[gtest]
+    fn get_diff_from_repo_no_changes() -> Result<()> {
+        let (_tmp, _, clone) = test_tar_to_repo_and_clone().into_test_result()?;
+        let diff_text = get_diff_from_repo(&clone).into_test_result()?;
+        expect_that!(diff_text, char_count(eq(0)));
+        Ok(())
+    }
+
+    #[gtest]
+    fn get_diff_from_repo_no_remote() -> Result<()> {
+        let (_tmp, origin, _) = test_tar_to_repo_and_clone().into_test_result()?;
+        let result = get_diff_from_repo(&origin);
+        expect_that!(result, err(anything()));
+        let error = format!("{:#}", result.unwrap_err());
+        expect_that!(error, contains_substring(DEFAULT_REMOTE_HEAD));
         Ok(())
     }
 

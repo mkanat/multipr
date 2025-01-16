@@ -80,10 +80,16 @@ fn get_diff_from_repo(repo: &Repository) -> anyhow::Result<String> {
     let local_head_tree = local_head.tree()?;
     let merge_base_tree = merge_base_commit.tree()?;
 
+    // This is one difference from the normal behavior of git diff: we need to show
+    // binary data so that we can actually split those changes between diffs. Note
+    // that `git diff --binary` and this code produce different text output, but they
+    // create identical results when applied. There's a difference in encoding and/or
+    // compression between git and libgit2.
+    let mut diff_opts = DiffOptions::new();
+    diff_opts.show_binary(true);
+
     // TODO: Provide an option to choose between diffing against the workdir and
     // diffing against committed head.
-    //
-    // TODO: Need to support binary files that have changed.
     //
     // We default to using the committed head because we assume that the user's
     // intent is to create diffs against what would be pushed as a PR if they
@@ -91,7 +97,7 @@ fn get_diff_from_repo(repo: &Repository) -> anyhow::Result<String> {
     let diff = repo.diff_tree_to_tree(
         Some(&merge_base_tree),
         Some(&local_head_tree),
-        Some(&mut DiffOptions::new()),
+        Some(&mut diff_opts),
     )?;
 
     let mut diff_text = String::new();

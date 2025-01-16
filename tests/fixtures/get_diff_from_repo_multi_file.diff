@@ -6,8 +6,32 @@ index a6a13b4..44a6f15 100644
 -One line of text.
 +Modified line of text.
 diff --git a/dir1/image.png b/dir1/image.png
-index 82d5c7f..61137fb 100644
-Binary files a/dir1/image.png and b/dir1/image.png differ
+index 82d5c7ffb72f68ba1eb641c165013deba5220e0d..61137fbd4fe9722977ace09b8d80d8168a7f827e 100644
+GIT binary patch
+delta 571
+zc%0k8(#kp^w4O=I)5S5QBJS-C!@NTV5=TGw0D(-SvO$rETi$^d3pQ<O<>L<|fPyRI
+zmiian6_NU_`cLMb|E3Vfh9~;T?PhBOOg=JCa#QpandCy4NZF)#{&{h=h0LRNcH^59
+zI_htjJdV9rF<(To`WVmJh!Y#r&s<nmtlFxn(&;ow15R9Uid%oZY;WB5<(D<<UMXL2
+z(i7``Fa73bj+p&d!3;&gi^tR##hRuqYQ6LR`^U>yJz^JSD3<TO+aDR3edda4m)NJD
+zHQQ#NUG{6nO7D>Ui|@~H@)1{D_-#g>Q@zt#L;3#p^%E|LelFX6w0&pc&X`+2Yu@Rr
+zD5&MBzB%&Y``@~L{^EmW+0rvuYI&rD47d*qAIW9So4SXU_x#59wkkYwLfdY??HAs<
+z;P_)hyDc+5+zDE;SBvr5f~#3ywU>!sZ871HnzyBWeZ{%F+)Hs&HUGrMRh>O^cdhTO
+z)ka76*PqsXaU)wTE$LleZdXgorR=opK0Y_s`fi+{7H2&Dbm}$Mzv9_yvmPlb#u&Hv
+zbp1DdWc&DhVoh83gb3-!-J2Uv?3BJ3&zNgaaIf`AXh6>t$y-|&wlLd^NyN1Bl)inl
+z=3tk2k+jgRvTt)H?q0a(kyXlzyVw6+^@tSuwMuPCIhUu&q6sQoo;Zn5tnWYm`up6<
+RaR&nsc)I$ztaD0e0s!Cm3RM6A
+
+delta 493
+zc${lx-N7;;w4U*-r;B4qMcmtKhJ8&A5^afIUfy2)4-9R(RLwUS$sD|N?c5~g$e^fA
+zGkra7%ul?2^t-&_=e?Y*EN-<aX*yM{Avc7xBAZ%-RHi5_WZ_ix&~S9(6!Mx7fI~=x
+zt8#DL@5?V!{L=-wBn7(bnPfjDpZXkatpZY(%KmbzVj76}q?|SjN%t#dh2863_a9H*
+ze>ZRc|6Mnf=h)9b|83inwPKrcZ%6Lfxj0kG+GkT3>rR&Qau5HVewx%?mM=QtJi|Fg
+zTe<#yI;Z8Yw_X4K`)=H;TelSt{|XPi%93Zn*WSE0wLWOZrEmKhBCnSkUD)o(Cw(Gq
+z^GpSsW^wHUH#ah6bZz~tJ7N26U9KJX-@je@U$1BH?YC+(?x{Bad8>cs&adxYj3s~M
+z?(N)vI9{5Q*W%po<5JJLJabgmi`+iDx2U;iZSy_<R^4s0tDhPbz425ro3yl6CFPB$
+z&rgwKUWVEQCroWS)0{Q0dC3(0S!i4LQ*~*C_D8{X{<nLT^-mUeJ)V$#uDC0mHFLRz
+kW%j0~FFrT}6<O#NxA)e0J*%&-vSa`PPgg&ebxsLQ0H6ii7ytkO
+
 diff --git a/dir1/second-file.txt b/dir1/second-file.txt
 index 6da4d3e..bbf6cb0 100644
 --- a/dir1/second-file.txt

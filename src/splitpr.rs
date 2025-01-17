@@ -30,7 +30,8 @@ const FILENAME_FORBIDDEN_CHARS: [char; 10] = ['/', '<', '>', ':', '"', '\\', '|'
 #[derive(Parser)]
 #[command(version)]
 struct Args {
-    #[arg(short = 'i', long)]
+    /// Read a diff from this file.
+    #[arg(short = 'i', long, value_name = "FILE")]
     input_file: Option<String>,
 }
 

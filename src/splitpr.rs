@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context}; // Have to import Context trait for with_context.
 use atty;
+use clap::Parser;
 use env_logger;
 use git2::{DiffFormat, DiffOptions, Repository};
 use log::{debug, info, LevelFilter};
@@ -26,36 +27,55 @@ plus we replace . because we are adding our own extension.
 */
 const FILENAME_FORBIDDEN_CHARS: [char; 10] = ['/', '<', '>', ':', '"', '\\', '|', '?', '*', '.'];
 
+#[derive(Parser)]
+#[command(version)]
+struct Args {
+    #[arg(short = 'i', long)]
+    input_file: Option<String>,
+}
+
 // TODO: Use miette to colorize error output?
 fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
+
     env_logger::Builder::new()
         .filter_level(LevelFilter::Info)
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .parse_default_env()
         .init();
 
-    let mut input = String::new();
-    if atty::isnt(atty::Stream::Stdin) {
-        info!("Detected input on stdin, reading a diff from stdin.");
-        input = io::read_to_string(io::stdin())?;
-    } else {
-        match Repository::discover(Path::new(".")) {
-            Ok(repo) => {
-                info!("Diffing the local git repository against remote head.");
-                input = get_diff_from_repo(&repo)
-                    .with_context(|| format!("failed to do a git diff in {:#?}", repo.path()))?;
-            }
-            Err(e) => {
-                debug!("No git repo found: {}", e)
-            }
-        };
-    }
+    let input = get_input(args.input_file)?;
     if input.is_empty() {
         bail!("No input found on stdin, and local directory is not a git repo where the commits differ from remote head.");
     }
     let patch_files = split_diff(input)?;
     write_out_new_diffs(patch_files)?;
     Ok(())
+}
+
+fn get_input(input_file: Option<String>) -> anyhow::Result<String> {
+    // Explicitly specified CLI args override heuristics.
+    if let Some(path) = input_file {
+        return Ok(fs::read_to_string(path)?);
+    }
+
+    if atty::isnt(atty::Stream::Stdin) {
+        info!("Detected input on stdin, reading a diff from stdin.");
+        return Ok(io::read_to_string(io::stdin())?);
+    }
+
+    match Repository::discover(".") {
+        Ok(repo) => {
+            info!("Diffing the local git repository against remote head.");
+            let input = get_diff_from_repo(&repo)
+                .with_context(|| format!("failed to do a git diff in {:#?}", repo.path()))?;
+            return Ok(input);
+        }
+        Err(e) => {
+            debug!("No git repo found: {}", e)
+        }
+    };
+    Ok(String::new())
 }
 
 fn get_diff_from_repo(repo: &Repository) -> anyhow::Result<String> {

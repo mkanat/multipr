@@ -3,7 +3,7 @@ use std::io;
 use std::io::Write; // For buf in logger.
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context}; // Have to import Context trait for with_context.
+use anyhow::{anyhow, bail, Context}; // Have to import Context trait for with_context.
 use atty;
 use clap::Parser;
 use env_logger;
@@ -33,6 +33,13 @@ struct Args {
     /// Read a diff from this file.
     #[arg(short = 'i', long, value_name = "FILE")]
     input_file: Option<String>,
+
+    /// Path to a git repository to use as the source of the diff.
+    ///
+    /// If this argument is not specified, splitpr will assume the
+    /// current directory (or one of its parents) is a git repo.
+    #[arg(long, value_name = "PATH")]
+    from_repo: Option<String>,
 }
 
 // TODO: Use miette to colorize error output?
@@ -45,7 +52,7 @@ fn main() -> anyhow::Result<()> {
         .parse_default_env()
         .init();
 
-    let input = get_input(args.input_file)?;
+    let input = get_input(args.input_file, args.from_repo)?;
     if input.is_empty() {
         bail!("No input found on stdin, and local directory is not a git repo where the commits differ from remote head.");
     }
@@ -54,10 +61,15 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn get_input(input_file: Option<String>) -> anyhow::Result<String> {
+fn get_input(input_file: Option<String>, from_repo: Option<String>) -> anyhow::Result<String> {
     // Explicitly specified CLI args override heuristics.
     if let Some(path) = input_file {
-        return Ok(fs::read_to_string(path)?);
+        return fs::read_to_string(&path).map_err(|e| anyhow!("{}: {}", path, e));
+    }
+    if let Some(repo_path) = from_repo {
+        let repo = Repository::discover(repo_path)?;
+        return get_diff_from_repo(&repo)
+            .with_context(|| format!("failed to do a git diff in {:#?}", repo.path()));
     }
 
     if atty::isnt(atty::Stream::Stdin) {
